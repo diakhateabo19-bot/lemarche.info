@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  CAISSIER
+  ENTREPOT
+}
+
+model Employe {
+  id        Int      @id @default(autoincrement())
+  nom       String
+  telephone String   @unique
+  email     String   @unique
+  password  String
+  role      Role     @default(CAISSIER)
+  magasinId Int?
+  magasin   Magasin? @relation(fields: [magasinId], references: [id])
+  actif     Boolean  @default(true)
+  ventes    Vente[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Magasin {
+  id        Int       @id @default(autoincrement())
+  nom       String    @unique
+  type      String    // "entrepot" ou "magasin"
+  adresse   String?
+  ville     String?
+  telephone String?
+  employes  Employe[]
+  stocks    StockMagasin[]
+  ventes    Vente[]
+  createdAt DateTime  @default(now())
+}
+
+model Produit {
+  id            Int            @id @default(autoincrement())
+  nom           String
+  codeBarres    String         @unique
+  categorie     String?
+  prix          Float
+  unite         String
+  image         String?
+  description   String?
+  disponible    Boolean        @default(true)
+  stockGeneral  Int            @default(0)
+  stocksMagasin StockMagasin[]
+  detailsVente  DetailVente[]
+  createdAt     DateTime       @default(now())
+}
+
+model StockMagasin {
+  id        Int      @id @default(autoincrement())
+  magasinId Int
+  produitId Int
+  quantite  Int      @default(0)
+  seuilAlerte Int    @default(10)
+  magasin   Magasin  @relation(fields: [magasinId], references: [id])
+  produit   Produit  @relation(fields: [produitId], references: [id])
+
+  @@unique([magasinId, produitId])
+}
+
+model MouvementStock {
+  id          Int      @id @default(autoincrement())
+  type        String   // "entree", "sortie", "transfert"
+  origine     String?  // "entrepot" ou id_magasin
+  destination String?  // "entrepot" ou id_magasin
+  produitId   Int
+  quantite    Int
+  date        DateTime @default(now())
+  commentaire  String?
+  employeId   Int?
+}
+
+model Vente {
+  id            Int           @id @default(autoincrement())
+  magasinId     Int
+  employeId     Int
+  dateHeure     DateTime      @default(now())
+  montantTotal  Float
+  modePaiement  String
+  numeroTicket  String        @unique @default(cuid())
+  magasin       Magasin       @relation(fields: [magasinId], references: [id])
+  employe       Employe       @relation(fields: [employeId], references: [id])
+  details       DetailVente[]
+}
+
+model DetailVente {
+  id           Int     @id @default(autoincrement())
+  venteId      Int
+  produitId    Int
+  quantite     Int
+  prixUnitaire Float
+  totalLigne   Float
+  vente        Vente   @relation(fields: [venteId], references: [id])
+  produit      Produit @relation(fields: [produitId], references: [id])
+}
